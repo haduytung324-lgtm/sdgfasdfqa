@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Khách Hàng Điện - Thông báo tiền về ngay</title>
+
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon.png" type="image/png">
+  <link rel="icon" href="./icon-192.png" sizes="192x192" type="image/png">
+  <link rel="icon" href="./icon-512.png" sizes="512x512" type="image/png">
+  <link rel="apple-touch-icon" href="./icon-180.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
+  <link rel="apple-touch-icon-precomposed" href="./icon-180.png">
+
+  <meta name="theme-color" content="#007aff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Tiền về ngay">
+
+  <!-- SheetJS (xlsx) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f2f2f7;
+      margin: 0;
+      padding: 16px;
+      color: #1c1c1e;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin: 0 0 16px 0;
+    }
+
+    .card {
+      background: white;
+      padding: 14px;
+      border-radius: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+      margin-top: 8px;
+      font-size: 16px;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 80px;
+      white-space: pre-wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 15px;
+      margin-top: 8px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .primary  { background: #007aff; color: white; }
+    .success  { background: #34c759; color: white; }
+    .danger   { background: #ff3b30; color: white; }
+    .warn     { background: #ffcc00; color: #1c1c1e; }
+    .warn2    { background: #d70015; color: white; }
+    .zalo     { background: #0068ff; color: white; }
+    .zalo2    { background: #3d8bff; color: white; }
+    .zalo3    { background: #0047b3; color: white; }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .phone-card {
+      background: white;
+      padding: 14px;
+      border-radius: 18px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .phone-number {
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .status {
+      margin-top: 8px;
+      margin-right: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      display: inline-block;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .called      { background: #d1f7dd; color: #147a36; }
+    .not-called  { background: #ffe4e1; color: #c0392b; }
+    .sms-sent    { background: #d1e8ff; color: #0a4a8f; }
+    .sms-not-sent{ background: #fff4d1; color: #8a6d00; }
+
+    .info-box {
+      margin-top: 8px;
+      background: #fafafa;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 12px;
+      font-size: 15px;
+    }
+
+    .amount {
+      font-weight: bold;
+      color: #c0392b;
+      font-size: 18px;
+    }
+
+    .history-box {
+      margin-top: 8px;
+      background: #f0f7ff;
+      border: 1px solid #cfe2ff;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #0a4a8f;
+      white-space: pre-wrap;
+    }
+
+    #counter {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="accessOverlay" style="position:fixed; inset:0; background:#f2f2f7; z-index:9999; display:none; align-items:center; justify-content:center; padding:20px;">
+    <div class="card" style="max-width:360px; width:100%; text-align:center;">
+      <h2 style="margin:0 0 12px 0;">🔐 Nhập mã truy cập</h2>
+      <p style="color:#666; font-size:14px; margin-bottom:16px;">Nếu là lần đầu, bấm vào ứng dụng hoặc nhập mã (nếu đã có).</p>
+      <input type="text" id="accessCodeInput" placeholder="Nhập mã..." style="text-align:center; font-size:20px; letter-spacing:2px; text-transform:uppercase;">
+      <button class="primary" style="width:100%; margin-top:12px;" onclick="checkAccessCode()">Vào ứng dụng</button>
+      <p id="accessError" style="color:#ff3b30; font-size:14px; margin-top:10px; display:none;"></p>
+    </div>
+  </div>
+
+  <!-- Admin Modal -->
+  <div id="adminModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:10000; align-items:center; justify-content:center; padding:20px;">
+    <div class="card" style="max-width:340px; width:100%; background:#1c1c1e; color:white; border:none;">
+      <h3 style="margin:0 0 12px 0; color:white;">🔑 Đổi mã</h3>
+      <input type="password" id="adminPinInput" placeholder="Mã quản trị (1234)" style="margin-bottom:8px; background:#2c2c2e; color:white; border:1px solid #444;">
+      <input type="text" id="newCodeInput" placeholder="Mã truy cập mới" style="margin-bottom:12px; background:#2c2c2e; color:white; border:1px solid #444;">
+      <div class="row">
+        <button class="primary" onclick="saveNewCode()">Lưu mã</button>
+        <button class="danger" onclick="closeAdmin()">Hủy</button>
+      </div>
+      <p id="adminMsg" style="font-size:14px; margin-top:10px; color:#ff6b6b;"></p>
+    </div>
+  </div>
+
+  <h1 onclick="secretAdmin()" style="cursor:default;">⚡ Khách Hàng Điện</h1>
+  <div style="text-align:center; margin: -8px 0 16px 0; font-size:15px; font-weight:600; color:#007aff; background:#e8f2ff; padding:8px 12px; border-radius:12px;">
+    💰 Thông báo tiền về ngay
+  </div>
+
+  <div id="greetingBox" class="card" style="color: white; text-align: center; font-size: 16px; font-weight: 500; padding: 0; border: none; transition: all 0.6s ease; overflow: hidden; position: relative; min-height: 180px;">
+    <img id="greetingImg" src="" alt="Hình ảnh lời chúc" style="width: 100%; height: 180px; object-fit: cover; display: block; filter: brightness(0.7);">
+    <div id="greetingText" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; padding: 12px; background: rgba(0,0,0,0.35); border-radius: 12px; font-weight: 600; text-shadow: 0 1px 4px rgba(0,0,0,0.6);">Đang tải lời chúc...</div>
+    <button id="musicBtn" onclick="toggleMusic()" style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.5); color:white; border:none; border-radius:50%; width:40px; height:40px; font-size:18px;">▶</button>
+  </div>
+  <audio id="bgMusic" loop preload="none"></audio>
+
+  <div class="card">
+    <div style="margin-bottom:12px;">
+      <label style="display:block; font-weight:500; margin-bottom:6px; color:#1c1c1e;">📂 Chọn file Excel để import:</label>
+      <input type="file" id="excelFile" accept="*/*" onchange="importExcel(event)" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:12px; background:#fff; font-size:16px; box-sizing:border-box;">
+    </div>
+    <input type="text" id="searchInput" placeholder="🔍 Tìm SĐT, mã KH, tên, địa chỉ..." oninput="renderList()">
+    <p style="font-size:13px; color:#666; margin:8px 0 0 0; line-height:1.4;">
+      • Mở bằng <b>Safari</b>.<br>
+      • Chọn file Excel (.xlsx hoặc .xls).<br>
+      • Nếu không thấy file: lưu vào app Files trước.
+    </p>
+
+    <div class="row" style="margin-top:10px;">
+      <button class="danger" onclick="clearAll()">🗑 Xóa tất cả</button>
+    </div>
+
+    <div id="counter">
+      Tổng: <b>0</b> | Đã gọi: <b>0</b> | Đã nhắn: <b>0</b>
+    </div>
+    <div id="onlineCount" style="font-size:13px; color:#666; margin-top:6px;">
+      Đang dùng: <b>...</b>
+    </div>
+  </div>
+
+  <div id="phoneList"></div>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDnO-uCUtDk6ALBjRUDS7R0JwYUqr_B26c",
+      authDomain: "tung086-e41e3.firebaseapp.com",
+      databaseURL: "https://tung086-e41e3-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "tung086-e41e3",
+      storageBucket: "tung086-e41e3.firebasestorage.app",
+      messagingSenderId: "566074207671",
+      appId: "1:566074207671:web:3eb91b1ded506e2494cc32",
+      measurementId: "G-K8T53ZBX84"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    window.db = db;
+    window.ref = ref;
+    window.set = set;
+    window.push = push;
+    window.onValue = onValue;
+    window.ref = ref;
+
+    console.log("Firebase Connected");
+  </script>
+
+  <script>
+    // ==================== DATA ====================
+    let phoneData = JSON.parse(localStorage.getItem('phoneData') || '[]');
+
+    // ==================== HELPERS ====================
+    function fbKey(item) {
+      return (item.customerCode || item.phone || '').replace(/[.#$\[\]\/]/g, '_');
+    }
+
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function escapeAttr(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function normalizePhone(phone) {
+      return String(phone || '').replace(/[^0-9]/g, '');
+    }
+
+    function formatAmount(value) {
+      if (value === null || value === undefined || value === '') return '0';
+      const num = Number(String(value).replace(/[^0-9.-]/g, ''));
+      if (isNaN(num)) return String(value);
+      return num.toLocaleString('vi-VN');
+    }
+
+    // ==================== FIREBASE ====================
+    function saveCustomer(index) {
+      if (!window.db) return;
+      const item = phoneData[index];
+      if (!item) return;
+      const key = fbKey(item);
+
+      set(ref(db, 'customers/' + key + '/data'), {
+        phone: item.phone || '',
+        customerCode: item.customerCode || '',
+        maTram: item.maTram || '',
+        customerName: item.customerName || '',
+        address: item.address || '',
+        amount: String(item.amount || '0'),
+        note: item.note || '',
+        called: item.called || false,
+        time: item.time || null,
+        smsSent: item.smsSent || false,
+        smsTime: item.smsTime || null
+      });
+    }
+
+    function saveData() {
+      try {
+        // Giới hạn lịch sử để không đầy bộ nhớ
+        phoneData.forEach(item => {
+          if (item.history && item.history.length > 800) {
+            item.history = item.history.slice(-800);
+          }
+        });
+        localStorage.setItem('phoneData', JSON.stringify(phoneData));
+      } catch (e) {
+        alert('Bộ nhớ đầy! Vào Cài đặt → Safari → Xóa lịch sử và dữ liệu trang web.');
+      }
+    }
+
+    function deletePhone(index) {
+      if (!confirm('Xóa khách hàng này?')) return;
+      phoneData.splice(index, 1);
+      saveData();
+      renderList();
+    }
+
+    function clearAll() {
+      if (!confirm('Xóa TẤT CẢ dữ liệu trên máy này?')) return;
+      phoneData = [];
+      try {
+        localStorage.removeItem('phoneData');
+        localStorage.clear();
+      } catch (e) {}
+      renderList();
+      alert('Đã xóa xong. Nếu vẫn còn dữ liệu, hãy xóa dữ liệu Safari.');
+    }
+
+    function pushLog(item, text) {
+      if (!window.db) return;
+      push(ref(db, 'customers/' + fbKey(item) + '/logs'), {
+        detail: text,
+        time: new Date().toLocaleString('vi-VN'),
+        ts: Date.now()
+      });
+    }
+
+    function appendHistory(index, text) {
+      const time = new Date().toLocaleString('vi-VN');
+      const line = `[${time}] ${text}`;
+      const item = phoneData[index];
+      if (!item) return;
+
+      if (!item.history) item.history = '';
+      item.history = item.history ? item.history + '\n' + line : line;
+      pushLog(item, text);
+    }
+
+    function buildHistoryFromLogs(logs) {
+      if (!logs) return '';
+      return Object.values(logs)
+        .filter(l => l && l.time)
+        .sort((a, b) => (a.ts || 0) - (b.ts || 0))
+        .map(l => `[${l.time}] ${l.detail || ''}`)
+        .join('\n');
+    }
+
+    // ==================== IMPORT EXCEL ====================
+    function importExcel(event) {
+      const file = event.target.files[0];
+      if (!file) {
+        alert('Chưa chọn được file nào.');
+        return;
+      }
+
+      alert('Đang đọc file: ' + file.name);
+
+      if (typeof XLSX === 'undefined') {
+        alert('Lỗi: Thư viện đọc Excel chưa tải. Hãy kiểm tra mạng và tải lại trang.');
+        event.target.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+            alert('File Excel không có sheet nào.');
+            event.target.value = '';
+            return;
+          }
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(sheet);
+
+          let added = 0;
+
+          json.forEach(row => {
+            const customerCode = row.MA_KHTT || row.MA_KH || row.MAKH || '';
+            const maTram       = row.MA_TRAM || row.MATRAM || '';
+            const customerName = row.TEN_KHTT || row.TEN_KH || '';
+            const address      = row.DCHI_KHTT || row.DCHI_KH || row.DIACHI || '';
+            const amount       = row.SO_TIEN || row.SOTIEN || row.CONGNO || '0';
+            const phoneRaw     = row.SO_DIENTHOAI || row.SDT || row.DIENTHOAI || '';
+
+            if (!phoneRaw) return;
+
+            const normalized = normalizePhone(String(phoneRaw));
+            if (!normalized) return;
+
+            if (phoneData.find(p => p.phone === normalized)) return;
+
+            phoneData.push({
+              phone: normalized,
+              customerCode,
+              maTram,
+              customerName,
+              address,
+              amount,
+              note: '',
+              history: '',
+              called: false,
+              time: null,
+              smsSent: false,
+              smsTime: null
+            });
+            added++;
+          });
+
+          saveData();
+          renderList();
+          alert(`Đã thêm ${added} khách hàng mới.`);
+        } catch (err) {
+          console.error(err);
+          alert('Lỗi đọc file: ' + (err.message || 'Không xác định'));
+        }
+        event.target.value = '';
+      };
+      reader.onerror = function() {
+        alert('Không thể đọc file. Vui lòng thử lại.');
+        event.target.value = '';
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // ==================== MESSAGE ====================
+    const REMINDER1_TEXT =
+      'THỜI GIAN NỘP TIỀN ĐIỆN TỪ NGÀY MÙNG 3 ĐẦU THÁNG ĐẾN NGÀY MÙNG 10 HÀNG THÁNG. SAU NGÀY 10, BÊN ĐIỆN LỰC SẼ TIẾN HÀNH TẠM NGỪNG CUNG CẤP ĐIỆN. NẾU CÓ SAI SỐ ĐIỆN THOẠI HOẶC QUÝ KHÁCH ĐÃ NỘP TIỀN RỒI, XIN QUÝ KHÁCH VUI LÒNG BỎ QUA THÔNG BÁO NÀY. EM XIN CẢM ƠN NHIỀU Ạ.';
+
+    const REMINDER2_TEXT =
+      'THỜI GIAN 9H SÁNG MAI BÊN EM PHẢI ĐI TẠM NGỪNG CUNG CẤP ĐIỆN RỒI Ạ. NẾU QUÝ KHÁCH ĐÃ NỘP TIỀN RỒI HOẶC SAI SỐ ĐIỆN THOẠI, XIN QUÝ KHÁCH VUI LÒNG BỎ QUA Ạ. EM XIN CẢM ƠN NHIỀU.';
+
+    function buildMessage(name, code, amount, extra, address) {
+      let msg =
+        'Kính gửi khách hàng ' + (name || '') +
+        ' - Mã KH: ' + (code || '');
+
+      if (address) {
+        msg += '\nĐịa chỉ: ' + address;
+      } else {
+        msg += '\nĐịa chỉ: (chưa có thông tin)';
+      }
+
+      msg += '\nVui lòng thanh toán tiền điện. Số tiền: ' + formatAmount(amount) + 'đ';
+
+      if (extra) {
+        msg += '\n' + extra;
+      }
+
+      return msg;
+    }
+
+    function copyText(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.contentEditable = 'true';
+      ta.style.position = 'fixed';
+      ta.style.top = '0';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+
+      const range = document.createRange();
+      range.selectNodeContents(ta);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      try {
+        document.execCommand('copy');
+      } catch (e) {}
+
+      document.body.removeChild(ta);
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).catch(() => {});
+      }
+    }
+
+    // ==================== SMS / ZALO ====================
+    function openLink(url) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => document.body.removeChild(a), 100);
+    }
+
+    function callNumber(phone, index) {
+      const item = phoneData[index];
+      if (!item) return;
+
+      item.called = true;
+      item.time = new Date().toLocaleString('vi-VN');
+      appendHistory(index, '📲 Đã gọi');
+
+      saveCustomer(index);
+      localStorage.setItem('phoneData', JSON.stringify(phoneData));
+      renderList();
+
+      openLink('tel:' + phone);
+    }
+
+    function sendSMS(phone, name, code, amount, index, extra, label) {
+      const item = phoneData[index];
+      if (!item) return;
+
+      const msgText = buildMessage(name, code, amount, extra, item.address || '');
+      const msg = encodeURIComponent(msgText);
+
+      item.smsSent = true;
+      item.smsTime = new Date().toLocaleString('vi-VN');
+      appendHistory(index, (label || '💬 Đã bấm SMS') + ' - ' + formatAmount(amount) + 'đ');
+
+      saveCustomer(index);
+      localStorage.setItem('phoneData', JSON.stringify(phoneData));
+      renderList();
+
+      const isAndroid = /android/i.test(navigator.userAgent);
+      const sep = isAndroid ? '?' : '&';
+      openLink(`sms:${phone}${sep}body=${msg}`);
+    }
+
+    function sendZalo(phone, name, code, amount, index, extra, label) {
+      const item = phoneData[index];
+      if (!item) return;
+
+      const msgText = buildMessage(name, code, amount, extra, item.address || '');
+      copyText(msgText);
+      markZaloSent(index, amount, label);
+
+      alert('Đã copy nội dung tin nhắn.\nMở Zalo rồi dán (paste) vào khung chat.');
+      openLink('https://zalo.me/' + encodeURIComponent(phone));
+    }
+
+    function markZaloSent(index, amount, label) {
+      const item = phoneData[index];
+      if (!item) return;
+
+      item.smsSent = true;
+      item.smsTime = new Date().toLocaleString('vi-VN');
+      appendHistory(index, (label || '🟦 Đã bấm ZALO') + ' - ' + formatAmount(amount) + 'đ');
+
+      saveCustomer(index);
+      localStorage.setItem('phoneData', JSON.stringify(phoneData));
+      renderList();
+    }
+
+    function sendZaloReminder1(index) {
+      const it = phoneData[index];
+      if (!it) return;
+      sendZalo(it.phone, it.customerName, it.customerCode, it.amount, index, REMINDER1_TEXT, '🟦 Zalo nhắn 1');
+    }
+
+    function sendZaloReminder2(index) {
+      const it = phoneData[index];
+      if (!it) return;
+      sendZalo(it.phone, it.customerName, it.customerCode, it.amount, index, REMINDER2_TEXT, '🟦 Zalo nhắn 2');
+    }
+
+    function sendReminder1(index) {
+      const it = phoneData[index];
+      if (!it) return;
+      sendSMS(it.phone, it.customerName, it.customerCode, it.amount, index, REMINDER1_TEXT, '🔔 Tin nhắn 1');
+    }
+
+    function sendReminder2(index) {
+      const it = phoneData[index];
+      if (!it) return;
+      sendSMS(it.phone, it.customerName, it.customerCode, it.amount, index, REMINDER2_TEXT, '🔔 Tin nhắn 2');
+    }
+
+    function toggleCalled(index) {
+      const item = phoneData[index];
+      if (!item) return;
+
+      item.called = !item.called;
+      item.time = item.called ? new Date().toLocaleString('vi-VN') : null;
+      appendHistory(index, item.called ? '✓ Đánh dấu Đã gọi' : '✗ Bỏ đánh dấu Đã gọi');
+
+      saveCustomer(index);
+      localStorage.setItem('phoneData', JSON.stringify(phoneData));
+      renderList();
+    }
+
+    function toggleSms(index) {
+      const item = phoneData[index];
+      if (!item) return;
+
+      item.smsSent = !item.smsSent;
+      item.smsTime = item.smsSent ? new Date().toLocaleString('vi-VN') : null;
+      appendHistory(index, item.smsSent ? '✓ Đánh dấu Đã nhắn' : '✗ Bỏ đánh dấu Đã nhắn');
+
+      saveCustomer(index);
+      localStorage.setItem('phoneData', JSON.stringify(phoneData));
+      renderList();
+    }
+
+    function updateNote(index, value) {
+      if (!phoneData[index]) return;
+      phoneData[index].note = value;
+      saveCustomer(index);
+      localStorage.setItem('phoneData', JSON.stringify(phoneData));
+    }
+
+    // ==================== RENDER ====================
+    function renderList() {
+      const list = document.getElementById('phoneList');
+      const search = document.getElementById('searchInput').value.trim().toLowerCase();
+      list.innerHTML = '';
+
+      const filtered = phoneData.filter(item =>
+        !search ||
+        (item.phone || '').includes(search) ||
+        (item.customerCode || '').toLowerCase().includes(search) ||
+        (item.customerName || '').toLowerCase().includes(search) ||
+        (item.address || '').toLowerCase().includes(search)
+      );
+
+      filtered.forEach(item => {
+        const realIndex = phoneData.indexOf(item);
+        const div = document.createElement('div');
+        div.className = 'phone-card';
+
+        div.innerHTML = `
+          <div class="phone-number">${escapeHtml(item.phone)}</div>
+
+          <div class="info-box">
+            🆔 <b>${escapeHtml(item.customerCode)}${item.maTram ? ' - ' + escapeHtml(item.maTram) : ''}</b>
+          </div>
+
+          <div class="info-box">
+            👤 <b>${escapeHtml(item.customerName)}</b>
+          </div>
+
+          <div class="info-box">
+            📍 ${escapeHtml(item.address || 'Chưa có địa chỉ')}
+          </div>
+
+          <div class="info-box">
+            💰 <span class="amount">${formatAmount(item.amount)}</span> đ
+          </div>
+
+          <div>
+            <span class="status ${item.called ? 'called' : 'not-called'}"
+                  onclick="toggleCalled(${realIndex})">
+              ${item.called ? '✓ Đã gọi' : '✗ Chưa gọi'}
+            </span>
+            <span class="status ${item.smsSent ? 'sms-sent' : 'sms-not-sent'}"
+                  onclick="toggleSms(${realIndex})">
+              ${item.smsSent ? '✓ Đã nhắn' : '✗ Chưa nhắn'}
+            </span>
+          </div>
+
+          ${item.history
+            ? `<div class="history-box">📜 Nhật ký:\n${escapeHtml(item.history)}</div>`
+            : ''}
+
+          <textarea
+            placeholder="📝 Ghi chú riêng"
+            onchange="updateNote(${realIndex}, this.value)"
+          >${escapeHtml(item.note || '')}</textarea>
+
+          <div class="row">
+            <button class="primary" onclick="callNumber('${escapeAttr(item.phone)}', ${realIndex})">
+              📲 Gọi
+            </button>
+            <button class="success"
+              onclick="sendSMS('${escapeAttr(item.phone)}','${escapeAttr(item.customerName)}','${escapeAttr(item.customerCode)}','${escapeAttr(item.amount)}',${realIndex})">
+              💬 SMS
+            </button>
+            <button class="warn" onclick="sendReminder1(${realIndex})">
+              🔔 Tin nhắn 1
+            </button>
+            <button class="warn2" onclick="sendReminder2(${realIndex})">
+              🔔 Tin nhắn 2
+            </button>
+            <button class="danger" onclick="deletePhone(${realIndex})">
+              🗑 Xóa
+            </button>
+          </div>
+
+          <div class="row">
+            <button class="success"
+              onclick="sendZalo('${escapeAttr(item.phone)}','${escapeAttr(item.customerName)}','${escapeAttr(item.customerCode)}','${escapeAttr(item.amount)}',${realIndex})">
+              🟦 Zalo
+            </button>
+            <button class="warn" onclick="sendZaloReminder1(${realIndex})">
+              🟦 Zalo nhắn 1
+            </button>
+            <button class="warn2" onclick="sendZaloReminder2(${realIndex})">
+              🟦 Zalo nhắn 2
+            </button>
+          </div>
+        `;
+
+        list.appendChild(div);
+      });
+
+      // Counter
+      const called = phoneData.filter(p => p.called).length;
+      const smsSent = phoneData.filter(p => p.smsSent).length;
+      document.getElementById('counter').innerHTML =
+        `Tổng: <b>${phoneData.length}</b> | Đã gọi: <b>${called}</b> | Đã nhắn: <b>${smsSent}</b>`;
+    }
+
+    // ==================== FIREBASE SYNC ====================
+    function initOnlineCount() {
+      if (!window.db) {
+        setTimeout(initOnlineCount, 500);
+        return;
+      }
+
+      const sessionId = 's_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+      const presenceRef = ref(db, 'presence/' + sessionId);
+
+      // Đánh dấu đang online
+      set(presenceRef, { online: true, ts: Date.now() });
+
+      // Xóa khi đóng trang
+      window.addEventListener('beforeunload', () => {
+        set(presenceRef, null);
+      });
+      // Cũng xóa khi page hide (iOS)
+      window.addEventListener('pagehide', () => {
+        set(presenceRef, null);
+      });
+
+      // Lắng nghe số người đang online
+      onValue(ref(db, 'presence'), (snap) => {
+        const data = snap.val() || {};
+        const count = Object.keys(data).length;
+        const el = document.getElementById('onlineCount');
+        if (el) el.innerHTML = `Đang dùng: <b>${count}</b>`;
+      });
+    }
+
+    function initFirebaseSync() {
+      // Tắt đồng bộ tự động từ Firebase.
+      // Dữ liệu trên máy sẽ luôn được giữ nguyên.
+      console.log('Firebase auto-sync disabled.');
+    }
+
+    // ==================== LỜI CHÚC + NỀN THIÊN NHIÊN ====================
+    const GREETINGS = [
+      { text: "🌸 Hoa anh đào đang nở rộ! Chúc bạn một ngày làm việc thật rực rỡ và ngọt ngào!", img: "https://images.unsplash.com/photo-1522383225653-ed111181a951?w=800&q=80" },
+      { text: "🌲 Rừng thông xanh mát đang chờ bạn. Hít thở sâu và bắt đầu một ngày thật nhẹ nhàng nhé!", img: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80" },
+      { text: "🌺 Những đóa hoa hồng đang khoe sắc. Chúc bạn luôn tươi tắn và đầy năng lượng!", img: "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=800&q=80" },
+      { text: "🍃 Lá xanh rừng núi đang vẫy gọi. Hôm nay công việc sẽ trôi chảy như suối nguồn!", img: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&q=80" },
+      { text: "🌻 Hoa hướng dương luôn hướng về phía mặt trời. Bạn cũng vậy – luôn hướng về điều tốt đẹp!", img: "https://images.unsplash.com/photo-1597848212624-e59336f1c8c4?w=800&q=80" },
+      { text: "🌿 Rừng cây xanh um đang thì thầm lời chúc. Hôm nay sẽ là một ngày tuyệt vời!", img: "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?w=800&q=80" },
+      { text: "🌷 Những cánh hoa tulip đang đua nở. Chúc bạn luôn giữ được nụ cười trên môi!", img: "https://images.unsplash.com/photo-1520763185298-1b434c919102?w=800&q=80" },
+      { text: "🏞️ Núi rừng hùng vĩ đang chứng kiến sự chăm chỉ của bạn. Cố lên nào!", img: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80" },
+      { text: "🌼 Cánh đồng hoa cúc vàng đang rực rỡ. Chúc bạn một ngày làm việc đầy hứng khởi!", img: "https://images.unsplash.com/photo-1508193638397-1c4234db14d8?w=800&q=80" },
+      { text: "🌳 Dưới tán cây xanh mát, mọi việc sẽ trở nên dễ dàng hơn. Hãy tin vào bản thân!", img: "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=800&q=80" },
+      { text: "🌹 Hoa hồng đỏ thắm gửi lời chúc may mắn đến bạn hôm nay!", img: "https://images.unsplash.com/photo-1496062031456-07b8f162a322?w=800&q=80" },
+      { text: "🌾 Cánh đồng lúa vàng đang chín. Thành quả của bạn cũng sắp đến rồi!", img: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80" },
+      { text: "🦋 Rừng hoa và bướm đang nhảy múa. Chúc bạn một ngày thật vui và nhẹ nhàng!", img: "https://images.unsplash.com/photo-1462275646964-a0e3386b89fa?w=800&q=80" },
+      { text: "🌄 Bình minh trên núi rừng thật đẹp. Hôm nay cũng sẽ là một khởi đầu tuyệt vời!", img: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80" },
+      { text: "🪷 Hoa sen thanh khiết gửi lời chúc bình an và suôn sẻ đến bạn!", img: "https://images.unsplash.com/photo-1593691509543-c55fb32e5cee?w=800&q=80" },
+      { text: "🌵 Dù ở đâu, sự kiên trì của bạn cũng sẽ nở hoa. Cứ vững bước nhé!", img: "https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=80" },
+      { text: "🌊 Suối rừng trong veo đang chảy. Công việc hôm nay cũng sẽ êm đềm như vậy!", img: "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?w=800&q=80" },
+      { text: "🏵️ Vườn hoa đang khoe sắc rực rỡ. Chúc bạn luôn tràn đầy sức sống!", img: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=800&q=80" },
+      { text: "🌲🌲 Rừng thông bao la đang thì thầm: Hôm nay bạn sẽ làm rất tốt!", img: "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?w=800&q=80" },
+      { text: "💐 Bó hoa tươi thắm gửi đến bạn – người đang làm việc rất chăm chỉ!", img: "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?w=800&q=80" },
+      { text: "🌼 Hoa cúc trắng tinh khôi chúc bạn một ngày trong lành và thanh thản!", img: "https://images.unsplash.com/photo-1560717789-0ac7c58ac90a?w=800&q=80" },
+      { text: "🌺 Hoa dâm bụt đỏ thắm như trái tim bạn đang làm việc hết mình!", img: "https://images.unsplash.com/photo-1496062031456-07b8f162a322?w=800&q=80" },
+      { text: "🌿 Lá cây xanh mướt dưới nắng mai. Chúc bạn luôn tươi trẻ và tràn đầy sức sống!", img: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80" },
+      { text: "🌸 Hoa đào hồng phấn báo hiệu một ngày mới đầy hy vọng!", img: "https://images.unsplash.com/photo-1522383225653-ed111181a951?w=800&q=80" },
+      { text: "🏞️ Hồ nước trong xanh giữa rừng núi. Hãy giữ tâm hồn bình yên nhé!", img: "https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=800&q=80" },
+      { text: "🌻 Cánh đồng hướng dương vàng rực. Bạn chính là ánh nắng của ngày hôm nay!", img: "https://images.unsplash.com/photo-1470509037663-253afd7f0f51?w=800&q=80" },
+      { text: "🍃 Gió thổi qua tán lá xanh. Mọi việc sẽ nhẹ nhàng và suôn sẻ!", img: "https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=800&q=80" },
+      { text: "🌹 Hoa hồng vàng gửi lời chúc thành công rực rỡ đến bạn!", img: "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=800&q=80" },
+      { text: "🌲 Rừng thông ban đêm đầy sao. Hãy tin vào những điều tốt đẹp đang đến!", img: "https://images.unsplash.com/photo-1511497584788-876760111969?w=800&q=80" },
+      { text: "🌷 Tulip đỏ rực như nhiệt huyết của bạn. Cố lên nhé!", img: "https://images.unsplash.com/photo-1520763185298-1b434c919102?w=800&q=80" },
+      { text: "🌾 Lúa chín vàng dưới nắng. Thành quả xứng đáng đang chờ bạn!", img: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80" },
+      { text: "🦋 Bướm bay giữa vườn hoa. Ngày mới hãy nhẹ nhàng và vui vẻ!", img: "https://images.unsplash.com/photo-1462275646964-a0e3386b89fa?w=800&q=80" },
+      { text: "🌄 Hoàng hôn trên đỉnh núi. Kết thúc một ngày làm việc thật đẹp!", img: "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&q=80" },
+      { text: "🪷 Hoa sen nở giữa hồ. Giữ tâm thanh thản, mọi việc sẽ êm đềm!", img: "https://images.unsplash.com/photo-1593691509543-c55fb32e5cee?w=800&q=80" },
+      { text: "🌵 Xương rồng nở hoa giữa sa mạc. Kiên trì sẽ luôn có kết quả!", img: "https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=80" },
+      { text: "🌊 Biển xanh sóng vỗ. Công việc hôm nay sẽ trôi chảy như nước!", img: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80" },
+      { text: "🏵️ Hoa cẩm tú cầu nhiều màu. Chúc bạn một ngày đa sắc màu và thú vị!", img: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=800&q=80" },
+      { text: "🌸 Hoa mai vàng báo xuân. Năm mới, ngày mới, mọi điều tốt đẹp!", img: "https://images.unsplash.com/photo-1496062031456-07b8f162a322?w=800&q=80" },
+      { text: "🌿 Rừng tre xanh mát. Hãy giữ sự linh hoạt và vững vàng!", img: "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?w=800&q=80" },
+      { text: "🌺 Hoa lan tím quý phái. Chúc bạn luôn tự tin và thành công!", img: "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=800&q=80" },
+      { text: "🏞️ Thác nước đổ trắng xóa. Năng lượng của bạn cũng dồi dào như vậy!", img: "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?w=800&q=80" },
+      { text: "🌻 Hoa hướng dương nhỏ. Dù nhỏ bé vẫn luôn hướng về ánh sáng!", img: "https://images.unsplash.com/photo-1470509037663-253afd7f0f51?w=800&q=80" },
+      { text: "🍃 Lá phong đỏ mùa thu. Mọi thay đổi đều dẫn đến điều tốt đẹp hơn!", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80" },
+      { text: "🌹 Hoa hồng trắng tinh khiết. Chúc bạn một ngày trong sạch và bình an!", img: "https://images.unsplash.com/photo-1560717789-0ac7c58ac90a?w=800&q=80" }
+    ];
+
+    // ==================== ACCESS CONTROL ====================
+    const ADMIN_PIN = '1234'; // Đổi thành mật khẩu riêng của bạn
+
+    function checkAccess() {
+      const overlay = document.getElementById('accessOverlay');
+      const savedCode = localStorage.getItem('acceptedCode');
+
+      // Nếu chưa kết nối Firebase, tạm cho vào nếu đã có mã cũ
+      if (!window.db) {
+        setTimeout(checkAccess, 500);
+        return;
+      }
+
+      const codeRef = ref(db, 'masterAccessCode');
+      onValue(codeRef, (snap) => {
+        const currentCode = snap.val();
+
+        // Nếu chưa có mã nào trên Firebase → cho vào luôn (lần đầu)
+        if (!currentCode) {
+          if (overlay) overlay.style.display = 'none';
+          return;
+        }
+
+        // Nếu mã đã lưu khớp với mã hiện tại → cho vào
+        if (savedCode && savedCode === currentCode) {
+          if (overlay) overlay.style.display = 'none';
+        } else {
+          // Mã không khớp hoặc chưa nhập → hiện màn hình nhập mã
+          localStorage.removeItem('acceptedCode');
+          if (overlay) overlay.style.display = 'flex';
+        }
+      }, { onlyOnce: true });
+    }
+
+    function checkAccessCode() {
+      const input = document.getElementById('accessCodeInput').value.trim();
+      const errorEl = document.getElementById('accessError');
+      if (!input) {
+        errorEl.textContent = 'Vui lòng nhập mã.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (!window.db) {
+        errorEl.textContent = 'Chưa kết nối được. Kiểm tra mạng và thử lại.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      const codeRef = ref(db, 'masterAccessCode');
+      onValue(codeRef, (snap) => {
+        const currentCode = snap.val();
+        // Nếu chưa có mã trên Firebase, chấp nhận mã bất kỳ lần đầu hoặc cho vào
+        if (!currentCode) {
+          localStorage.setItem('acceptedCode', input || 'default');
+          document.getElementById('accessOverlay').style.display = 'none';
+          errorEl.style.display = 'none';
+          return;
+        }
+        if (input === currentCode) {
+          localStorage.setItem('acceptedCode', input);
+          document.getElementById('accessOverlay').style.display = 'none';
+          errorEl.style.display = 'none';
+        } else {
+          errorEl.textContent = 'Mã không đúng.';
+          errorEl.style.display = 'block';
+        }
+      }, { onlyOnce: true });
+    }
+
+    let adminTapCount = 0;
+    function secretAdmin() {
+      adminTapCount++;
+      if (adminTapCount >= 5) {
+        adminTapCount = 0;
+        openAdmin();
+      }
+      setTimeout(() => { adminTapCount = 0; }, 2000);
+    }
+
+    function openAdmin() {
+      document.getElementById('adminModal').style.display = 'flex';
+      document.getElementById('adminPinInput').value = '';
+      document.getElementById('newCodeInput').value = '';
+      document.getElementById('adminMsg').textContent = '';
+    }
+
+    function closeAdmin() {
+      document.getElementById('adminModal').style.display = 'none';
+    }
+
+    function saveNewCode() {
+      const pin = document.getElementById('adminPinInput').value.trim();
+      const newCode = document.getElementById('newCodeInput').value.trim();
+      const msgEl = document.getElementById('adminMsg');
+
+      if (pin !== ADMIN_PIN) {
+        msgEl.textContent = 'Sai mã quản trị. Mã là: 1234';
+        return;
+      }
+      if (!newCode) {
+        msgEl.textContent = 'Vui lòng nhập mã truy cập mới.';
+        return;
+      }
+      if (!window.db) {
+        msgEl.textContent = 'Chưa kết nối Firebase. Kiểm tra mạng.';
+        return;
+      }
+
+      set(ref(db, 'masterAccessCode'), newCode)
+        .then(() => {
+          alert('Đã cập nhật mã truy cập thành: ' + newCode);
+          closeAdmin();
+        })
+        .catch((err) => {
+          msgEl.textContent = 'Lỗi: ' + err.message;
+        });
+    }
+
+    const MUSIC_TRACKS = [
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
+    ];
+
+    let currentMusicIndex = 0;
+    let isMusicPlaying = false;
+
+    function showGreeting() {
+      const textEl = document.getElementById('greetingText');
+      const imgEl = document.getElementById('greetingImg');
+      const musicEl = document.getElementById('bgMusic');
+      if (!textEl || !imgEl) return;
+
+      const item = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
+      textEl.textContent = item.text;
+      imgEl.src = item.img || '';
+      imgEl.alt = item.text;
+
+      // Gán nhạc ngẫu nhiên khác nhau
+      currentMusicIndex = Math.floor(Math.random() * MUSIC_TRACKS.length);
+      if (musicEl) {
+        musicEl.src = MUSIC_TRACKS[currentMusicIndex];
+        musicEl.load();
+      }
+    }
+
+    function toggleMusic() {
+      const musicEl = document.getElementById('bgMusic');
+      const btn = document.getElementById('musicBtn');
+      if (!musicEl) return;
+
+      if (isMusicPlaying) {
+        musicEl.pause();
+        btn.textContent = '▶';
+        isMusicPlaying = false;
+      } else {
+        musicEl.volume = 0.4;
+        musicEl.play().then(() => {
+          btn.textContent = '⏸';
+          isMusicPlaying = true;
+        }).catch((err) => {
+          alert('Không phát được nhạc. Kiểm tra mạng hoặc thử lại.\n' + err.message);
+        });
+      }
+    }
+
+    // ==================== INIT ====================
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+
+    showGreeting();
+    checkAccess();
+    initFirebaseSync();
+    initOnlineCount();
+    renderList();
+  </script>
+</body>
+</html>
